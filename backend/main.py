@@ -55,9 +55,9 @@ async def limit_upload_size(request: Request, call_next):
     return await call_next(request)
 
 
-# serve frontend from same process (optional — also works via live server)
+# serve frontend at root — api routes take priority over mount
 if FRONTEND_DIR.exists():
-    app.mount("/app", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
 
 
 # ── param model ──────────────────────────────────────────────────────────────
