@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resonant Averages</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- header -->
+    <header>
+      <h1>Resonant Averages</h1>
+      <p class="subtitle">
+        spectral audio averaging &mdash; inspired by
+        <a href="https://jimcampbell.tv/" target="_blank" rel="noopener">Jim Campbell's Illuminated Averages</a>
+      </p>
+    </header>
+
+    <!-- upload -->
+    <section class="card" aria-label="file upload">
+      <p class="card-title">audio files</p>
+
+      <div id="drop-zone" role="button" tabindex="0" aria-label="drop audio files here or click to browse">
+        <span id="drop-label">drop audio files here, or click to browse</span>
+        <span id="drop-formats">WAV &middot; FLAC &middot; MP3 &middot; OGG &middot; AIFF</span>
+        <input type="file" id="file-input" accept="audio/*" multiple hidden>
+      </div>
+
+      <ul id="file-list" aria-label="loaded files"></ul>
+    </section>
+
+    <!-- controls -->
+    <section class="card" aria-label="processing settings">
+      <p class="card-title">settings</p>
+
+      <!-- mode -->
+      <div class="mode-group" role="group" aria-label="averaging mode">
+        <button class="mode-btn active" data-mode="single">single file</button>
+        <button class="mode-btn" data-mode="multi">multi file</button>
+      </div>
+
+      <!-- params -->
+      <div class="params-grid">
+
+        <div class="param-row">
+          <label class="param-label" for="n-fft">FFT size</label>
+          <input type="range" id="n-fft" min="0" max="7" step="1" value="2"
+                 aria-valuetext="2048">
+          <span class="param-value" id="n-fft-display">2048</span>
+        </div>
+
+        <div class="param-row">
+          <label class="param-label" for="hop-pct">hop %</label>
+          <input type="range" id="hop-pct" min="10" max="75" step="5" value="25">
+          <span class="param-value" id="hop-pct-display">25%</span>
+        </div>
+
+        <div class="param-row">
+          <label class="param-label" for="output-dur">duration (s)</label>
+          <input type="range" id="output-dur" min="1" max="120" step="1" value="10">
+          <span class="param-value" id="output-dur-display">10s</span>
+        </div>
+
+        <div class="param-row">
+          <label class="param-label" for="gl-iters">GL iterations</label>
+          <input type="range" id="gl-iters" min="4" max="128" step="4" value="32">
+          <span class="param-value" id="gl-iters-display">32</span>
+        </div>
+
+        <!-- contrast subsection -->
+        <div class="contrast-header">
+          <label class="toggle" aria-label="enable contrast enhancement">
+            <input type="checkbox" id="contrast-enable" checked>
+            <span class="toggle-track"></span>
+          </label>
+          <span class="contrast-label">contrast enhancement</span>
+        </div>
+
+        <div id="contrast-params">
+          <div class="params-grid">
+            <div class="param-row">
+              <label class="param-label" for="contrast-thresh">threshold</label>
+              <input type="range" id="contrast-thresh" min="0" max="100" step="1" value="50">
+              <span class="param-value" id="contrast-thresh-display">50%</span>
+            </div>
+
+            <div class="param-row">
+              <label class="param-label" for="boost-power">boost power</label>
+              <input type="range" id="boost-power" min="1" max="10" step="0.1" value="2">
+              <span class="param-value" id="boost-power-display">2.0</span>
+            </div>
+
+            <div class="param-row">
+              <label class="param-label" for="suppress-power">suppress power</label>
+              <input type="range" id="suppress-power" min="1" max="10" step="0.1" value="2">
+              <span class="param-value" id="suppress-power-display">2.0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- process -->
+    <div class="action-row">
+      <button id="process-btn" disabled>process</button>
+      <div id="status-bar" role="status" aria-live="polite"></div>
+    </div>
+
+    <!-- output -->
+    <section id="output-section" class="card" hidden aria-label="output">
+      <p class="card-title">result</p>
+      <canvas id="waveform-canvas" width="800" height="100"
+              aria-label="output waveform"></canvas>
+      <audio id="audio-player" controls></audio>
+      <div class="output-actions">
+        <button id="download-btn">download WAV</button>
+      </div>
+    </section>
+
+  </div><!-- .container -->
+
+  <script src="app.js"></script>
+</body>
+</html>
