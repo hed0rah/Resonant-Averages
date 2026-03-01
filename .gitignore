@@ -1,0 +1,30 @@
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# output audio — don't commit generated files
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# os
+.DS_Store
+Thumbs.db
+
+# claude code local state
+.claude/
+
+# editors
+.vscode/
+.idea/
+*.swp
