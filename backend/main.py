@@ -12,7 +12,11 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from processor import ProcessParams, get_audio_info, process_multi, process_single
+# relative import for docker/package mode; fallback for local dev
+try:
+    from .processor import ProcessParams, get_audio_info, process_multi, process_single
+except ImportError:
+    from processor import ProcessParams, get_audio_info, process_multi, process_single
 
 # ── constants ────────────────────────────────────────────────────────────────
 
@@ -159,8 +163,5 @@ async def process(
 
 
 # ── entrypoint ───────────────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+# local dev: run from project root with `python -m uvicorn backend.main:app --reload`
+# or: `cd backend && python -m uvicorn main:app --reload` (uses non-relative import fallback)
