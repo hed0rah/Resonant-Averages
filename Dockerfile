@@ -2,21 +2,22 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# install system deps for soundfile/librosa
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# install python deps first (layer cache)
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
 # copy project files
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
-# install dependencies
-RUN pip install --no-cache-dir \
-    fastapi==0.104.1 \
-    uvicorn==0.24.0 \
-    librosa==0.11.0 \
-    numpy==1.26.2 \
-    scipy==1.16.2 \
-    soundfile==0.13.1 \
-    pydantic==2.5.0 \
-    python-multipart==0.0.6 \
-    audioread==3.0.1
+# railway injects PORT env var; default 8000 for local docker use
+ENV PORT=8000
+EXPOSE ${PORT}
 
-# start app
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# shell form so $PORT is expanded at runtime
+CMD uvicorn backend.main:app --host 0.0.0.0 --port $PORT
