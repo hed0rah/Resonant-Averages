@@ -1,6 +1,9 @@
 'use strict';
 
-const API_BASE = 'http://127.0.0.1:8000';
+// auto-detect backend: localhost for dev, same origin for prod
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://127.0.0.1:8000'
+  : window.location.origin;
 
 // n_fft slider maps index 0–7 to powers of 2
 const FFT_SIZES = [512, 1024, 2048, 4096, 8192, 16384, 32768, 65536];
