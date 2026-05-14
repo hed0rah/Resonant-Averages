@@ -2,6 +2,9 @@
 import asyncio
 import json
 import concurrent.futures
+import os
+import signal
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
@@ -27,10 +30,22 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
+IDLE_TIMEOUT = 300  # seconds before process exits when no requests are active
+_last_request: float = time.monotonic()
+
+
+async def _idle_watcher():
+    while True:
+        await asyncio.sleep(60)
+        if time.monotonic() - _last_request > IDLE_TIMEOUT:
+            os.kill(os.getpid(), signal.SIGTERM)  # clean exit → systemd won't restart
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_idle_watcher())
     yield
+    task.cancel()
     executor.shutdown(wait=False)
 
 
@@ -48,6 +63,8 @@ app.add_middleware(
 
 @app.middleware("http")
 async def limit_upload_size(request: Request, call_next):
+    global _last_request
+    _last_request = time.monotonic()
     if request.method == "POST":
         cl = request.headers.get("content-length")
         if cl and int(cl) > MAX_UPLOAD_BYTES:
