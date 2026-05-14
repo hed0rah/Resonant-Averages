@@ -2,6 +2,10 @@
 import asyncio
 import json
 import concurrent.futures
+import logging
+import os
+import signal
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
@@ -12,6 +16,8 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
+log = logging.getLogger("resonant")
+
 # relative import for docker/package mode; fallback for local dev
 try:
     from .processor import ProcessParams, get_audio_info, process_multi, process_single
@@ -20,17 +26,29 @@ except ImportError:
 
 # ── constants ────────────────────────────────────────────────────────────────
 
-MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB total
+# upload size cap is enforced by nginx (client_max_body_size 210m)
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 
 # ── thread pool (librosa releases GIL, threads are sufficient) ───────────────
 
 executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
+IDLE_TIMEOUT = 300  # seconds before process exits when no requests are active
+_last_request: float = time.monotonic()
+
+
+async def _idle_watcher():
+    while True:
+        await asyncio.sleep(60)
+        if time.monotonic() - _last_request > IDLE_TIMEOUT:
+            os.kill(os.getpid(), signal.SIGTERM)  # clean exit → systemd won't restart
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_idle_watcher())
     yield
+    task.cancel()
     executor.shutdown(wait=False)
 
 
@@ -40,18 +58,16 @@ app = FastAPI(title="Resonant Averages", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # public tool, safe to allow all origins
+    allow_origins=["https://resonant.grivtdynamics.com"],
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
 
 @app.middleware("http")
-async def limit_upload_size(request: Request, call_next):
-    if request.method == "POST":
-        cl = request.headers.get("content-length")
-        if cl and int(cl) > MAX_UPLOAD_BYTES:
-            return JSONResponse({"detail": "upload too large (max 200 MB)"}, status_code=413)
+async def track_request_activity(request: Request, call_next):
+    global _last_request
+    _last_request = time.monotonic()
     return await call_next(request)
 
 
@@ -111,8 +127,9 @@ async def file_info(file: UploadFile = File(...)):
     loop = asyncio.get_event_loop()
     try:
         info = await loop.run_in_executor(executor, get_audio_info, raw)
-    except Exception as e:
-        raise HTTPException(status_code=422, detail=f"could not read file: {e}")
+    except Exception:
+        log.exception("audio info read failed")
+        raise HTTPException(status_code=422, detail="could not read file")
     return JSONResponse(info)
 
 
@@ -152,8 +169,9 @@ async def process(
             wav_bytes = await loop.run_in_executor(
                 executor, process_multi, files_bytes, params_obj
             )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"processing failed: {e}")
+    except Exception:
+        log.exception("processing failed")
+        raise HTTPException(status_code=500, detail="processing failed")
 
     return Response(
         content=wav_bytes,
